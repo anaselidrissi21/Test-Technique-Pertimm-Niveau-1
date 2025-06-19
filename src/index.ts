@@ -13,7 +13,6 @@ async function register() {
 			password1: process.env.PASSWORD,
 			password2: process.env.PASSWORD
 		}),
-
 	});
 
 	if (!response.ok) {
@@ -24,4 +23,35 @@ async function register() {
 	console.log('✅ Registration successful');
 }
 
-register().catch(console.error);
+async function login(): Promise<string> {
+	const response = await fetch(`${BASE_URL}/auth/login/`, {
+		method: 'POST',
+		headers: {
+			'Content-Type': 'application/json',
+		},
+		body: JSON.stringify({
+			email: process.env.EMAIL,
+			password: process.env.PASSWORD,
+		}),
+	});
+
+	const data = await response.json();
+
+	if (!response.ok || !data.token) {
+		throw new Error(`❌ Login failed: ${response.status} - ${JSON.stringify(data)}`);
+	}
+
+	console.log('✅ Login successful');
+	return data.token;
+}
+
+async function main() {
+	try {
+		const token = await login();
+		console.log('🔐 Token:', token);
+	} catch (err) {
+		console.error(err);
+	}
+}
+
+main();
