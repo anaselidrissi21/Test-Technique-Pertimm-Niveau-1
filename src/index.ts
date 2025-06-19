@@ -55,7 +55,7 @@ async function createApplication(token: string): Promise<string> {
 		body: JSON.stringify({
 			email: process.env.EMAIL,
 			first_name: 'Anas',
-			last_name: 'El idrissi',
+			last_name: 'Elidrissi',
 		}),
 	});
 
@@ -71,7 +71,7 @@ async function createApplication(token: string): Promise<string> {
 
 async function waitForCompletion(token: string, statusUrl: string): Promise<string> {
 	const maxAttempts = 15;
-	const interval = 2000; // 2 seconds
+	const interval = 2000;
 
 	for (let i = 0; i < maxAttempts; i++) {
 		const response = await fetch(statusUrl, {
@@ -99,6 +99,26 @@ async function waitForCompletion(token: string, statusUrl: string): Promise<stri
 	throw new Error('❌ Timeout: status did not reach COMPLETED');
 }
 
+async function confirmApplication(token: string, confirmationUrl: string): Promise<void> {
+	const response = await fetch(confirmationUrl, {
+		method: 'PATCH',
+		headers: {
+			'Authorization': `Token ${token}`,
+			'Content-Type': 'application/json',
+		},
+		body: JSON.stringify({
+			confirmed: true,
+		}),
+	});
+
+	if (!response.ok) {
+		const error = await response.text();
+		throw new Error(`❌ Confirmation failed: ${response.status} - ${error}`);
+	}
+
+	console.log('✅ Application confirmed');
+}
+
 async function main() {
 	try {
 		const token = await login();
@@ -107,6 +127,8 @@ async function main() {
 
 		const confirmationUrl = await waitForCompletion(token, applicationUrl);
 		console.log('✅ Confirmation URL:', confirmationUrl);
+
+		await confirmApplication(token, confirmationUrl);
 	} catch (err) {
 		console.error(err);
 	}
