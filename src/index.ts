@@ -45,10 +45,68 @@ async function login(): Promise<string> {
 	return data.token;
 }
 
+async function createApplication(token: string): Promise<string> {
+	const response = await fetch(`${BASE_URL}/job-application-request/`, {
+		method: 'POST',
+		headers: {
+			'Authorization': `Token ${token}`,
+			'Content-Type': 'application/json',
+		},
+		body: JSON.stringify({
+			email: process.env.EMAIL,
+			first_name: 'Anas',
+			last_name: 'El idrissi',
+		}),
+	});
+
+	const data = await response.json();
+
+	if (!response.ok || !data.url) {
+		throw new Error(`❌ Application creation failed: ${response.status} - ${JSON.stringify(data)}`);
+	}
+
+	console.log('✅ Application created');
+	return data.url;
+}
+
+async function waitForCompletion(token: string, statusUrl: string): Promise<string> {
+	const maxAttempts = 15;
+	const interval = 2000; // 2 seconds
+
+	for (let i = 0; i < maxAttempts; i++) {
+		const response = await fetch(statusUrl, {
+			headers: {
+				Authorization: `Token ${token}`
+			}
+		});
+
+		const data = await response.json();
+
+		if (!response.ok) {
+			throw new Error(`❌ Failed to poll status: ${response.status} - ${JSON.stringify(data)}`);
+		}
+
+		console.log(`⏳ Status check (${i + 1}/${maxAttempts}):`, data.status);
+
+		if (data.status === 'COMPLETED' && data.confirmation_url) {
+			console.log('✅ Status is COMPLETED');
+			return data.confirmation_url;
+		}
+
+		await new Promise(resolve => setTimeout(resolve, interval));
+	}
+
+	throw new Error('❌ Timeout: status did not reach COMPLETED');
+}
+
 async function main() {
 	try {
 		const token = await login();
-		console.log('🔐 Token:', token);
+		const applicationUrl = await createApplication(token);
+		console.log('📄 Application status URL:', applicationUrl);
+
+		const confirmationUrl = await waitForCompletion(token, applicationUrl);
+		console.log('✅ Confirmation URL:', confirmationUrl);
 	} catch (err) {
 		console.error(err);
 	}
